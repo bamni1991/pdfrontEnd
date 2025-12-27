@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "228227295517",
+    "project_id": "ceryletech-notification",
+    "storage_bucket": "ceryletech-notification.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:228227295517:android:6b96207a3f008f12dd99f4",
+        "android_client_info": {
+          "package_name": "com.ceryletech.ceryletech"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDqFBonQ0vQIy-URoboQOyI6fuWqkivyy4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

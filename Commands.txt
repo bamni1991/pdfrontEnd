@@ -1,0 +1,47 @@
+#run expo scan Qrcode
+
+npx expo start
+
+
+#expo run on andriod
+cd android
+gradlew clean
+npx expo build:android
+
+#expo run on ios
+
+npx expo build:ios
+
+#expo run on web
+
+npx expo build:web
+
+#expo run on web
+
+npx expo build:web
+
+#delete npm 
+rmdir /s /q node_modules
+
+CLEAR CHECHE
+npm cache clean --force
+
+npx expo install --check
+
+# buils on devicesa
+npx expo run:android
+
+#shat creadinal
+
+eas credentials -p android
+
+npx expo prebuild --clean
+
+
+eas build -p android --profile production-apk
+
+# Diagnose and fix common project issues
+npx expo-doctor
+
+# Fix dependency version mismatches
+npx expo install --fix
