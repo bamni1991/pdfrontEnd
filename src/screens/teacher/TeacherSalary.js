@@ -29,13 +29,13 @@ import { useAuth } from "../../context/AuthContext";
 import Toast from "react-native-toast-message";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
-const FeesDetails = ({ route, navigation }) => {
+const TeacherSalary = ({ route, navigation }) => {
 
 
 
     useLayoutEffect(() => {
         navigation.getParent()?.setOptions({
-            title: "Fees Details",
+            title: "Salary Details",
         });
     }, [navigation]);
 
@@ -54,7 +54,7 @@ const FeesDetails = ({ route, navigation }) => {
 
     useLayoutEffect(() => {
         navigation.setOptions({
-            title: "Fees Details",
+            title: "Salary Details",
             headerStyle: { backgroundColor: '#5E72EB' },
             headerTintColor: '#fff',
         });
@@ -771,4 +771,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default FeesDetails;
+export default TeacherSalary;

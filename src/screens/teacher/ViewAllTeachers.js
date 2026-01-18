@@ -16,112 +16,215 @@ import {
     ActivityIndicator,
 } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
-import { Dropdown } from "react-native-element-dropdown";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import Constants from "expo-constants";
+import { Dropdown } from "react-native-element-dropdown";
+import Toast from "react-native-toast-message";
 
 
-const ViewAllAdmissionStudent = ({ navigation }) => {
-    const { user } = useAuth();
+const ViewAllTeachers = ({ navigation }) => {
+    const { user } = useAuth(); // If auth is needed
 
     const backendUrl = Constants.expoConfig.extra.backendUrl;
     const userImageBaseUrl = Constants.expoConfig.extra.userImageBaseUrl;
-    // console.log(userImageBaseUrl);
+
     useLayoutEffect(() => {
         navigation.getParent()?.setOptions({
-            title: "Student List",
+            title: "Teacher List",
         });
     }, [navigation]);
 
 
     const [searchQuery, setSearchQuery] = useState("");
-    const [selectedClass, setSelectedClass] = useState(null);
-    const [selectedSession, setSelectedSession] = useState(null); // Default to All
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [students, setStudents] = useState([]);
-    const [filteredStudents, setFilteredStudents] = useState([]);
-    const [sessionOptions, setSessionOptions] = useState([]);
+    const [teachers, setTeachers] = useState([]);
+    const [filteredTeachers, setFilteredTeachers] = useState([]);
+
+    // Filter States
+    const [selectedClass, setSelectedClass] = useState(null);
+    const [selectedSession, setSelectedSession] = useState(null);
     const [classOptions, setClassOptions] = useState([]);
+    const [sessionOptions, setSessionOptions] = useState([]);
 
-
-
-    const fetchStudentData = useCallback(async () => {
+    const fetchFilterOptions = async () => {
         try {
-            const response = await axios.get(`${backendUrl}feachStudentAdminScreenData`);
+            const response = await axios.get(`${backendUrl}getStudentFromCreatingData`);
+            if (response.data.status) {
+                const cls = (response.data.data.classes || []).map(c => ({ label: c.class_name, value: c.id }));
+                setClassOptions([{ label: "All Classes", value: null }, ...cls]);
 
-            const classesWithAll = [{ label: "All", value: null }, ...(response.data.data.classes || [])];
-            setClassOptions(classesWithAll);
-            const sessionsWithAll = [{ label: "All", value: null }, ...(response.data.data.sessions || [])];
-            setSessionOptions(sessionsWithAll);
-            setStudents(response.data.data.students || []);
+                const sessions = (response.data.data.academic_session || []).map(s => ({ label: s.session_name, value: s.id }));
+                setSessionOptions([{ label: "All Sessions", value: null }, ...sessions]);
+            }
         } catch (error) {
-            console.error(error.response?.data);
-            Alert.alert("Error", "Failed to fetch student data");
+            console.error("Error fetching filter options:", error);
+        }
+    };
+
+    const fetchTeacherData = useCallback(async () => {
+        try {
+            const response = await axios.get(`${backendUrl}getAllTeachers`);
+            const teacherList = response.data.teachers || [];
+            debugger;
+            // Debug: Check data structure of first teacher
+            if (teacherList.length > 0) {
+                console.log("First Teacher Data Example:", JSON.stringify(teacherList[0], null, 2));
+                if (teacherList[0].classes) {
+                    console.log("First Teacher Classes:", JSON.stringify(teacherList[0].classes, null, 2));
+                } else {
+                    console.log("Classes property missing in teacher object");
+                }
+            }
+
+            setTeachers(teacherList);
+        } catch (error) {
+            console.error("Error fetching teachers:", error);
+            Alert.alert("Error", "Failed to fetch teachers.");
         }
     }, [backendUrl]);
 
     useEffect(() => {
         const initializeData = async () => {
             setLoading(true);
-            await fetchStudentData();
+            await Promise.all([fetchTeacherData(), fetchFilterOptions()]);
             setLoading(false);
         };
 
         initializeData();
-    }, [fetchStudentData]);
+    }, [fetchTeacherData]);
 
     const onRefresh = useCallback(async () => {
         setRefreshing(true);
-        await fetchStudentData();
+        await Promise.all([fetchTeacherData(), fetchFilterOptions()]);
         setRefreshing(false);
-    }, [fetchStudentData]);
+    }, [fetchTeacherData]);
+
+    const confirmDelete = (id) => {
+        Alert.alert(
+            "Delete Teacher",
+            "Are you sure you want to delete this teacher? This action cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: () => handleDelete(id)
+                }
+            ]
+        );
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            const response = await axios.delete(`${backendUrl}teachers/delete/${id}`);
+            if (response.data.status) {
+                Toast.show({
+                    type: "success",
+                    text1: "Success",
+                    text2: "Teacher deleted successfully",
+                });
+                fetchTeacherData();
+            } else {
+                Toast.show({
+                    type: "error",
+                    text1: "Error",
+                    text2: response.data.message || "Failed to delete teacher",
+                });
+            }
+        } catch (error) {
+            console.error("Error deleting teacher:", error);
+            Toast.show({
+                type: "error",
+                text1: "Error",
+                text2: "Failed to delete teacher",
+            });
+        }
+    };
 
     const filterData = useCallback(() => {
-        let temp = students;
+        let temp = teachers;
 
-        if (selectedSession) {
-            temp = temp.filter(s => s.academic_session_id === selectedSession);
-        }
-
-        if (selectedClass) {
-            temp = temp.filter(s => s.class_id === selectedClass);
-        }
-
+        // Filter by Query
         if (searchQuery) {
-            temp = temp.filter(s =>
-                s.student_name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
+            const query = searchQuery.toLowerCase();
+            temp = temp.filter(t => {
+                const name = t.user?.name || t.full_name || t.name || "";
+                const mobile = t.user?.mobile || t.mobile_no || "";
+                const qualification = t.qualification || "";
+
+                return (
+                    name.toLowerCase().includes(query) ||
+                    mobile.includes(query) ||
+                    qualification.toLowerCase().includes(query)
+                );
+            });
         }
 
-        setFilteredStudents(temp);
-    }, [students, selectedSession, selectedClass, searchQuery]);
+        // Filter by Class and Session
+        if (selectedClass || selectedSession) {
+            temp = temp.filter(t => {
+                const classes = t.classes;
+                if (!classes || !Array.isArray(classes)) return false;
+
+                return classes.some(item => {
+                    let itemClassId = null;
+                    let itemSessionId = null;
+
+                    if (typeof item === 'object') {
+                        // Try to get Class ID
+                        if (item.class && item.class.id) itemClassId = item.class.id;
+                        else if (item.class_id) itemClassId = item.class_id;
+                        else if (item.id && !item.teacher_id) itemClassId = item.id; // Fallback if item is a Class object directly
+
+                        // Try to get Session ID
+                        if (item.academic_session && item.academic_session.id) itemSessionId = item.academic_session.id;
+                        else if (item.academic_session_id) itemSessionId = item.academic_session_id;
+                    } else {
+                        // Item is just an ID (assuming Class ID)
+                        itemClassId = item;
+                    }
+
+                    const matchClass = !selectedClass || String(itemClassId) === String(selectedClass);
+                    const matchSession = !selectedSession || String(itemSessionId) === String(selectedSession);
+
+                    return matchClass && matchSession;
+                });
+            });
+        }
+
+        setFilteredTeachers(temp);
+    }, [teachers, searchQuery, selectedClass, selectedSession]);
 
     useEffect(() => {
         filterData();
     }, [filterData]);
 
-    const renderStudentItem = ({ item }) => {
+    const renderTeacherItem = ({ item }) => {
+        const name = item.user?.name || item.name || item.full_name || "Teacher";
+        const mobile = item.user?.mobile || item.mobile_no || "N/A";
+        const photo = item.profile_photo || item.photo;
+
         return (
             <Card
                 style={styles.card}
                 mode="elevated"
-                onPress={() => navigation.navigate('StudentDetails', { studentId: item.id })}
+                onPress={() => navigation.navigate('TeacherDetails', { teacherId: item.id })}
             >
                 <View style={styles.cardContent}>
                     <View style={styles.leftSection}>
-                        {item.photo ? (
+                        {photo ? (
                             <Avatar.Image
                                 size={54}
-                                source={{ uri: `${userImageBaseUrl}${item.photo}` }}
+                                source={{ uri: `${userImageBaseUrl}${photo}` }}
                                 style={styles.avatar}
                             />
                         ) : (
                             <Avatar.Text
                                 size={54}
-                                label={item.student_name ? item.student_name.substring(0, 2).toUpperCase() : "NA"}
+                                label={name.substring(0, 2).toUpperCase()}
                                 style={[styles.avatar, { backgroundColor: '#5E72EB' }]}
                                 color="white"
                             />
@@ -130,47 +233,60 @@ const ViewAllAdmissionStudent = ({ navigation }) => {
 
                     <View style={styles.middleSection}>
                         <View style={styles.nameRow}>
-                            <Text style={styles.studentName} numberOfLines={1}>{item.student_name}</Text>
-                            <View style={styles.classBadge}>
-                                <Text style={styles.classBadgeText}>{item.className}</Text>
-                            </View>
+                            <Text style={styles.teacherName} numberOfLines={1}>{name}</Text>
                         </View>
 
                         <View style={styles.infoRow}>
-                            <MaterialCommunityIcons name="account-tie" size={14} color="#666" style={styles.infoIcon} />
-                            <Text style={styles.detailText} numberOfLines={1}>{item.father_name}</Text>
+                            <MaterialCommunityIcons name="school" size={14} color="#666" style={styles.infoIcon} />
+                            <Text style={styles.detailText} numberOfLines={1}>{item.qualification || "Qualification N/A"}</Text>
                         </View>
 
                         <View style={styles.rowDistanced}>
                             <View style={styles.infoItem}>
                                 <MaterialCommunityIcons name="phone" size={14} color="#5E72EB" style={styles.infoIcon} />
-                                <TouchableOpacity onPress={() => item.mobile1 && Linking.openURL(`tel:${item.mobile1}`)}>
-                                    <Text style={[styles.detailText, { color: item.mobile1 ? '#5E72EB' : '#666' }]}>{item.mobile1 || "N/A"}</Text>
+                                <TouchableOpacity onPress={() => mobile !== "N/A" && Linking.openURL(`tel:${mobile}`)}>
+                                    <Text style={[styles.detailText, { color: mobile !== "N/A" ? '#5E72EB' : '#666' }]}>{mobile}</Text>
                                 </TouchableOpacity>
                             </View>
                             <View style={styles.dotSeparator} />
                             <View style={styles.infoItem}>
-                                <MaterialCommunityIcons name="calendar-month-outline" size={14} color="#5E72EB" style={styles.infoIcon} />
+                                <MaterialCommunityIcons name="briefcase-clock" size={14} color="#5E72EB" style={styles.infoIcon} />
                                 <Text style={styles.detailText}>
-                                    {item.admissionDate ? new Date(item.admissionDate).toLocaleDateString('en-GB') : "N/A"}
+                                    {item.experience_years || item.experience ? `${item.experience_years || item.experience} Yrs` : "Exp N/A"}
                                 </Text>
                             </View>
                         </View>
+
+                        {/* Show assigned count or classes if needed, for better UX */}
+                        {item.classes && item.classes.length > 0 && (
+                            <View style={[styles.infoRow, { marginTop: 4 }]}>
+                                <MaterialCommunityIcons name="bookshelf" size={14} color="#666" style={styles.infoIcon} />
+                                <Text style={[styles.detailText, { fontSize: 11 }]}>
+                                    Classes: {item.classes.length} Assigned
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
                     <View style={styles.rightSection}>
                         <TouchableOpacity
                             style={[styles.actionButton, { marginRight: 8, backgroundColor: '#E8EAFA' }]}
-                            onPress={() => navigation.navigate('StudentAdmissionFrom', { studentId: item.id })}
+                            onPress={() => navigation.navigate('TeacherAdmission', { teacherId: item.id })}
                         >
                             <MaterialCommunityIcons name="pencil" size={20} color="#5E72EB" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.actionButton, { marginRight: 8, backgroundColor: '#FFEBEE' }]}
+                            onPress={() => confirmDelete(item.id)}
+                        >
+                            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#EF4444" />
                         </TouchableOpacity>
                         <View style={styles.actionButton}>
                             <MaterialCommunityIcons name="chevron-right" size={24} color="#5E72EB" />
                         </View>
                     </View>
                 </View>
-            </Card>
+            </Card >
         );
     };
 
@@ -180,22 +296,23 @@ const ViewAllAdmissionStudent = ({ navigation }) => {
 
             {/* Header */}
             <LinearGradient colors={["#5E72EB", "#4a5edb"]} style={styles.header}>
-                {/* Search Bar */}
-                <Searchbar
-                    placeholder="Search by name..."
-                    onChangeText={setSearchQuery}
-                    value={searchQuery}
-                    style={styles.searchBar}
-                    inputStyle={styles.searchInput}
-                    iconColor="#5E72EB"
-                    placeholderTextColor="#888"
-                />
+                <View style={styles.searchContainer}>
+                    {/* Search Bar */}
+                    <Searchbar
+                        placeholder="Search name, mobile..."
+                        onChangeText={setSearchQuery}
+                        value={searchQuery}
+                        style={styles.searchBar}
+                        inputStyle={styles.searchInput}
+                        iconColor="#5E72EB"
+                        placeholderTextColor="#888"
+                    />
+                </View>
 
-                {/* Filters Row */}
+                {/* Filter Row */}
                 <View style={styles.filterRow}>
-                    {/* Class Filter */}
                     <Dropdown
-                        style={styles.dropdown}
+                        style={[styles.dropdown, { marginRight: 6 }]}
                         placeholderStyle={styles.placeholderStyle}
                         selectedTextStyle={styles.selectedTextStyle}
                         inputSearchStyle={styles.inputSearchStyle}
@@ -205,7 +322,7 @@ const ViewAllAdmissionStudent = ({ navigation }) => {
                         maxHeight={300}
                         labelField="label"
                         valueField="value"
-                        placeholder="Select Class"
+                        placeholder="Class"
                         searchPlaceholder="Search..."
                         value={selectedClass}
                         onChange={item => setSelectedClass(item.value)}
@@ -214,10 +331,8 @@ const ViewAllAdmissionStudent = ({ navigation }) => {
                         )}
                         containerStyle={styles.dropdownContainer}
                     />
-
-                    {/* Session Filter */}
                     <Dropdown
-                        style={[styles.dropdown, { marginLeft: 12 }]}
+                        style={[styles.dropdown, { marginLeft: 6 }]}
                         placeholderStyle={styles.placeholderStyle}
                         selectedTextStyle={styles.selectedTextStyle}
                         inputSearchStyle={styles.inputSearchStyle}
@@ -237,21 +352,26 @@ const ViewAllAdmissionStudent = ({ navigation }) => {
                 </View>
             </LinearGradient>
 
-            {/* Student List */}
+            {/* Teacher List */}
             <View style={styles.listContainer}>
                 <View style={styles.listHeader}>
                     <Text style={styles.listCount}>
-                        Found {filteredStudents.length} Students
+                        Found {filteredTeachers.length} Teachers
                     </Text>
+                    {(selectedClass || selectedSession) && (
+                        <TouchableOpacity onPress={() => { setSelectedClass(null); setSelectedSession(null); }}>
+                            <Text style={styles.clearFilter}>Clear Filter</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 {loading ? (
                     <ActivityIndicator size="large" color="#5E72EB" style={{ marginTop: 20 }} />
                 ) : (
                     <FlatList
-                        data={filteredStudents}
-                        renderItem={renderStudentItem}
-                        keyExtractor={(item) => item.id.toString()}
+                        data={filteredTeachers}
+                        renderItem={renderTeacherItem}
+                        keyExtractor={(item) => item.id ? item.id.toString() : Math.random().toString()}
                         contentContainerStyle={styles.listContent}
                         showsVerticalScrollIndicator={false}
                         refreshing={refreshing}
@@ -259,7 +379,8 @@ const ViewAllAdmissionStudent = ({ navigation }) => {
                         ListEmptyComponent={
                             <View style={styles.emptyContainer}>
                                 <MaterialCommunityIcons name="account-search-outline" size={60} color="#ccc" />
-                                <Text style={styles.emptyText}>No students found</Text>
+                                <Text style={styles.emptyText}>No teachers found</Text>
+                                {selectedClass && <Text style={styles.subEmptyText}>Try changing the class filter</Text>}
                             </View>
                         }
                     />
@@ -286,10 +407,12 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
     },
+    searchContainer: {
+        marginBottom: 12
+    },
     searchBar: {
         borderRadius: 12,
         backgroundColor: "white",
-        marginBottom: 16,
         elevation: 0,
         height: 48,
         borderWidth: 1,
@@ -302,7 +425,7 @@ const styles = StyleSheet.create({
     },
     filterRow: {
         flexDirection: "row",
-        justifyContent: "space-between",
+        alignItems: "center",
     },
     dropdown: {
         flex: 1,
@@ -315,17 +438,21 @@ const styles = StyleSheet.create({
     },
     dropdownContainer: {
         borderRadius: 8,
+        backgroundColor: '#fff',
+        elevation: 5,
+        borderWidth: 1,
+        borderColor: '#eee'
     },
     icon: {
         marginRight: 8,
     },
     placeholderStyle: {
-        fontSize: 13,
+        fontSize: 14,
         color: 'rgba(255, 255, 255, 0.85)',
         fontWeight: '500'
     },
     selectedTextStyle: {
-        fontSize: 13,
+        fontSize: 14,
         color: 'white',
         fontWeight: '600'
     },
@@ -353,6 +480,12 @@ const styles = StyleSheet.create({
         color: '#666',
         fontWeight: '600',
         fontSize: 14
+    },
+    clearFilter: {
+        color: '#5E72EB',
+        fontWeight: '600',
+        fontSize: 12,
+        textDecorationLine: 'underline'
     },
     listContent: {
         paddingBottom: 20
@@ -392,27 +525,16 @@ const styles = StyleSheet.create({
         marginBottom: 4,
         flexWrap: 'wrap'
     },
-    studentName: {
+    teacherName: {
         fontSize: 16,
         fontWeight: '700',
         color: '#2C3E50',
         marginRight: 8
     },
-    classBadge: {
-        backgroundColor: '#E8EAFA',
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    classBadgeText: {
-        fontSize: 11,
-        color: '#5E72EB',
-        fontWeight: '700'
-    },
     infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 4
+        marginBottom: 2
     },
     rowDistanced: {
         flexDirection: 'row',
@@ -436,7 +558,7 @@ const styles = StyleSheet.create({
     },
     detailText: {
         fontSize: 12,
-        color: '#666',
+        color: '#64748B',
         fontWeight: '500'
     },
     rightSection: {
@@ -460,7 +582,12 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginTop: 10,
         fontWeight: '500'
+    },
+    subEmptyText: {
+        color: '#999',
+        fontSize: 13,
+        marginTop: 4
     }
 });
 
-export default ViewAllAdmissionStudent;
+export default ViewAllTeachers;

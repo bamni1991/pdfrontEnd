@@ -1,4 +1,4 @@
-import React, { useLayoutEffect } from "react";
+import React, { useLayoutEffect, useState, useEffect, useCallback } from "react";
 import {
   View,
   StyleSheet,
@@ -6,11 +6,14 @@ import {
   FlatList,
   StatusBar,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import { Text, Avatar, Card, Surface } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
+import axios from "axios";
+import Constants from "expo-constants";
 
 const AdminDashBoard = ({ navigation }) => {
 
@@ -20,33 +23,61 @@ const AdminDashBoard = ({ navigation }) => {
     });
   }, [navigation]);
 
-
-
   const { user } = useAuth();
+  const backendUrl = Constants.expoConfig.extra.backendUrl;
+  const [dashboardData, setDashboardData] = useState({
+    totalStudents: 0,
+    totalCollection: 0,
+    feesPending: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Dummy data for the school admin dashboard
+  const fetchDashboardDetails = async () => {
+    try {
+      // debugger;
+      const response = await axios.get(`${backendUrl}student-dashboard-details`);
+      if (response.data && response.data.status) {
+        setDashboardData(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard details:", error);
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    fetchDashboardDetails().finally(() => setLoading(false));
+  }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchDashboardDetails();
+    setRefreshing(false);
+  }, []);
+
   const statsData = [
     {
       title: "Students",
-      value: "1,256",
+      value: loading ? "..." : dashboardData.totalStudents || "0",
       icon: "account-school",
       color: ["#5E72EB", "#3D50C6"],
     },
     {
       title: "Teachers",
-      value: "84",
+      value: loading ? "..." : dashboardData.totalTeacher || "0",
       icon: "account-tie",
       color: ["#26A69A", "#00897B"],
     },
     {
       title: "Fees Collected",
-      value: "₹1.2 Cr",
+      value: loading ? "..." : `₹${dashboardData.totalCollection || "0"}`,
       icon: "cash-check",
-      color: ["#FF7043", "#F4511E"],
+      color: ["#00b09b", "#96c93d"],
     },
     {
       title: "Fees Pending",
-      value: "₹15 L",
+      value: loading ? "..." : `₹${dashboardData.feesPending || "0"}`,
       icon: "cash-remove",
       color: ["#EF5350", "#E53935"],
     },
@@ -56,7 +87,7 @@ const AdminDashBoard = ({ navigation }) => {
     {
       title: "Teachers",
       icon: "account-tie",
-      screen: "ManageTeachers",
+      screen: "TeacherDashboard",
       color: "#3498db",
     },
     {
@@ -72,23 +103,12 @@ const AdminDashBoard = ({ navigation }) => {
       color: "#2ecc71",
     },
     {
-      title: "Fees",
-      icon: "cash-multiple",
-      screen: "ManageFees",
-      color: "#1abc9c",
-    },
-    {
-      title: "Announce",
-      icon: "bullhorn",
-      screen: "Announcements",
-      color: "#f1c40f",
-    },
-    {
-      title: "Events",
+      title: "Holidays",
       icon: "calendar-star",
-      screen: "Events",
+      screen: "SchoolHoliday",
       color: "#e67e22",
     },
+
   ];
 
   const renderStatCard = ({ item }) => (
@@ -129,7 +149,13 @@ const AdminDashBoard = ({ navigation }) => {
   return (
     <>
       <StatusBar barStyle="light-content" backgroundColor="#5E72EB" />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#5E72EB"]} />
+        }
+      >
         <LinearGradient
           colors={["#5E72EB", "#3D50C6"]}
           style={styles.headerSurface}

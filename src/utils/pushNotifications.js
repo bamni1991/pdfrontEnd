@@ -83,7 +83,7 @@ export async function registerPushToken(userId) {
   try {
     // 1. Try cached token
     let token = await getPushToken();
-    debugger;
+    // debugger;
     // 2. If not available, request a new one
     if (!token) {
       token = await registerForPushNotificationsAsync();

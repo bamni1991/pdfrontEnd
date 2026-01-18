@@ -243,7 +243,7 @@ const COLORS = {
 
 const CustomDrawerContent = (props) => {
   const { backendUrl, userImageBaseUrl } = useConfigConstants();
-  const { role_name, userId, user, userImage, logout } = useAuth();
+  const { role_name, userId, user, userImage, logout, updateUser } = useAuth();
 
   // State Management
   const [activeKey, setActiveKey] = useState("home");
@@ -284,10 +284,8 @@ const CustomDrawerContent = (props) => {
   };
 
   const handleMenuItemPress = (screenName, itemKey, sectionName) => {
-    debugger;
     animateItemPress(itemScale);
     setActiveKey(itemKey);
-    // debugger;
     if (screenName === "Home") {
       if (role_name === "admin") {
         props.navigation.navigate("AdminNavigator", {
@@ -343,10 +341,11 @@ const CustomDrawerContent = (props) => {
 
       const base64data = await convertImageToBase64(compressedImage.uri);
       const uploadResponse = await uploadImageToServer(base64data);
-      debugger;
-      if (uploadResponse.data.status) {
+      if (uploadResponse?.data?.status) {
         showSuccessToast("Profile Image Uploaded successfully");
-        user.profile_image = uploadResponse.data?.data?.fileName;
+
+        // user.profile_image = uploadResponse.data?.data?.fileName;
+        updateUser({ profile_image: uploadResponse.data?.data?.fileName });
         setImageModalVisible(false);
         setSelectedImage(null);
       } else {
@@ -512,7 +511,7 @@ const CustomDrawerContent = (props) => {
   // ========================================================================
 
   function renderUserProfile() {
-    console.log(user);
+    console.log(`${userImageBaseUrl}${user?.profile_image}`);
     return (
       <View style={styles.profileSection}>
         <LinearGradient
@@ -527,7 +526,7 @@ const CustomDrawerContent = (props) => {
               {user?.profile_image ? (
                 <Avatar.Image
                   source={{
-                    uri: `${userImageBaseUrl}/${user?.profile_image}`,
+                    uri: `${userImageBaseUrl}${user?.profile_image}`,
                   }}
                   size={60}
                   style={styles.avatar}

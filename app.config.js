@@ -8,7 +8,7 @@ export default {
     userInterfaceStyle: "light",
     sdkVersion: "54.0.0",
     platforms: ["android"],
-    plugins: [],
+    plugins: ["expo-asset"],
     newArchEnabled: true,
 
     splash: {
@@ -72,35 +72,26 @@ export default {
       checkAutomatically: "ON_LOAD",
       fallbackToCacheTimeout: 0,
     },
-
-    // 192.168.1.168
-    //  IPv4 Address. . . . . . . . . . . : 192.168.204.72
-    //local address
-    // IPv4 Address. . . . . . . . . . . : 192.168.252.72
-    //  backendUrl: "http://10.0.2.2/Pd_backend/api/",
-    // extra: {
-    //   appName: "Padmavati",
-    //   //  IPv4 Address. . . . . . . . . . . : 10.160.60.72
-    //   //  IPv4 Address. . . . . . . . . . . : 10.189.98.72
-
-    //   backendUrl: "http://10.189.98.72/Pd_backend/api/",
-    //   userImageBaseUrl:
-    //     "http://10.189.98.72/Pd_backend/public/",
-    //   eas: {
-    //     projectId: "79f44ca8-3ec7-4806-b1b4-47a8baba32d5",
-    //   },
-    // },
-    // https://www.ramenterprisepro.com/
+    //  IPv4 Address. . . . . . . . . . . : 192.168.221.72
+    //  IPv4 Address. . . . . . . . . . . : 192.168.157.72
     extra: {
-      appName: "Ceryletech",
-      backendUrl: "https://www.ramenterprisepro.com/api/",
+      appName: "Padmavati",
+      backendUrl: "http://192.168.221.72/Pd_backend/api/",
       userImageBaseUrl:
-        "https://www.ramenterprisepro.com/api/images/UserImage/",
-      taskCommentsUrl:
-        "https://www.ramenterprisepro.com/api/images/TaskComments/",
+        "http://192.168.221.72/Pd_backend/public/",
       eas: {
         projectId: "79f44ca8-3ec7-4806-b1b4-47a8baba32d5",
       },
     },
+    // https://www.ramenterprisepro.com/
+    // extra: {
+    //   appName: "Ceryletech",
+    //   backendUrl: "https://www.ramenterprisepro.com/api/",
+    //   userImageBaseUrl:
+    //     "https://www.ramenterprisepro.com/public/",
+    //   eas: {
+    //     projectId: "79f44ca8-3ec7-4806-b1b4-47a8baba32d5",
+    //   },
+    // },
   },
 };

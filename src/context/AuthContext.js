@@ -64,6 +64,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = async (updatedUserData) => {
+    try {
+      const newUserData = { ...user, ...updatedUserData };
+      await storeSession(newUserData, newUserData.id);
+      setUser(newUserData);
+      // Update other states if necessary
+      if (updatedUserData.role_name) setRoleName(updatedUserData.role_name);
+      if (updatedUserData.profile_image) setUserImage(updatedUserData.profile_image);
+    } catch (error) {
+      console.error("Update user error:", error);
+    }
+  };
+
   const isAuthenticated = !!user;
 
   return (
@@ -77,6 +90,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         userImage,
+        updateUser,
       }}
     >
       {children}

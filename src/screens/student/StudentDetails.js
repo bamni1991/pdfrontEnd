@@ -7,6 +7,9 @@ import {
     Image,
     ActivityIndicator,
     TouchableOpacity,
+    Linking,
+    Platform,
+    Alert
 } from "react-native";
 import {
     Text,
@@ -15,23 +18,556 @@ import {
 } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system/legacy";
 import Constants from "expo-constants";
 import axios from "axios";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import { Asset } from "expo-asset";
 
 const StudentDetails = ({ route, navigation }) => {
-
-    useLayoutEffect(() => {
-        navigation.getParent()?.setOptions({
-            title: "Student Details",
-        });
-    }, [navigation]);
 
     const { studentId } = route.params || {};
     const [loading, setLoading] = useState(true);
     const [student, setStudent] = useState(null);
+    const [isPrinting, setIsPrinting] = useState(false);
 
     const backendUrl = Constants.expoConfig.extra.backendUrl;
     const userImageBaseUrl = Constants.expoConfig.extra.userImageBaseUrl;
+    const generatePDF = async () => {
+        if (!student) return;
+
+        setIsPrinting(true);
+        try {
+            const studentPhoto = student.photo ? `${userImageBaseUrl}${student.photo}` : "https://via.placeholder.com/150";
+
+            // Load local asset and convert to base64
+            let schoolLogo = userImageBaseUrl + "school_logo.png";
+
+
+            const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            font-size: 12px; 
+            line-height: 1.6; 
+            color: #1e293b; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .wrapper { 
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px; 
+            max-width: 850px; 
+            margin: 0 auto; 
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        }
+        
+        /* Header Styles */
+        .header { 
+            width: 100%; 
+            padding-bottom: 20px; 
+            margin-bottom: 30px; 
+            display: table; 
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .logo-cell { 
+            display: table-cell; 
+            vertical-align: middle; 
+            width: 100px; 
+            text-align: left; 
+        }
+        
+        .logo-img { 
+            width: 90px; 
+            height: 90px; 
+            object-fit: contain;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+            border-radius: 12px;
+        }
+        
+        .header-content { 
+            display: table-cell; 
+            vertical-align: middle; 
+            text-align: center; 
+            padding-left: 20px;
+        }
+        
+        .school-name { 
+            font-size: 28px; 
+            font-weight: 700; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+        
+        .school-address { 
+            font-size: 11px; 
+            color: #64748b; 
+            margin-top: 8px; 
+            line-height: 1.6;
+        }
+        
+        /* Form Title */
+        .form-title-box { 
+            text-align: center; 
+            margin-bottom: 35px; 
+        }
+        
+        .form-title { 
+            display: inline-block; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff; 
+            font-size: 15px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            padding: 10px 32px; 
+            border-radius: 25px; 
+            letter-spacing: 1.5px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Section Styles */
+        .section { 
+            margin-bottom: 30px; 
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .section-header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff; 
+            padding: 10px 16px; 
+            font-size: 13px; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            border-radius: 8px;
+            margin-bottom: 15px; 
+            letter-spacing: 0.8px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Top Section: Photo + Basic Info */
+        .top-layout { 
+            display: table; 
+            width: 100%; 
+            margin-bottom: 0;
+        }
+        
+        .basic-info { 
+            display: table-cell; 
+            vertical-align: top; 
+            padding-right: 20px; 
+        }
+        
+        .photo-container { 
+            display: table-cell; 
+            vertical-align: top; 
+            width: 140px; 
+            text-align: right; 
+        }
+        
+        .photo-box { 
+            width: 140px; 
+            height: 160px; 
+            border: 3px solid #667eea;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            object-fit: cover;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Field Tables */
+        .info-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+        }
+        
+        .info-table td { 
+            padding: 8px 0; 
+            vertical-align: top; 
+        }
+        
+        .label-cell { 
+            width: 38%; 
+            color: #64748b; 
+            font-size: 11px; 
+            font-weight: 600; 
+            text-transform: uppercase; 
+            letter-spacing: 0.3px;
+        }
+        
+        .value-cell { 
+            width: 62%; 
+            font-weight: 500; 
+            font-size: 13px; 
+            color: #1e293b;
+            border-bottom: 2px dotted #cbd5e1; 
+            padding-bottom: 4px;
+        }
+        
+        /* 2-Column Grid for details */
+        .col-2-grid { 
+            display: table; 
+            width: 100%; 
+            table-layout: fixed; 
+        }
+        
+        .grid-col { 
+            display: table-cell; 
+            width: 48%; 
+            vertical-align: top; 
+        }
+        
+        .grid-gap { 
+            display: table-cell; 
+            width: 4%; 
+        }
+        
+        /* Kit Items */
+        .kit-grid { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            margin-top: 10px; 
+        }
+        
+        .kit-item { 
+            border: 2px solid #86efac;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            color: #166534; 
+            padding: 8px 16px; 
+            font-size: 12px; 
+            border-radius: 20px; 
+            font-weight: 600; 
+            display: inline-flex; 
+            align-items: center;
+            box-shadow: 0 2px 6px rgba(34, 197, 94, 0.15);
+            transition: all 0.2s ease;
+        }
+        
+        .kit-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+        }
+        
+        .check-mark { 
+            margin-right: 6px; 
+            font-weight: bold; 
+            color: #16a34a;
+            font-size: 14px;
+        }
+        
+        .no-kit { 
+            font-style: italic; 
+            color: #94a3b8; 
+            font-size: 12px; 
+            padding: 10px; 
+            text-align: center;
+            width: 100%;
+        }
+        
+        /* Footer */
+        .footer { 
+            margin-top: 60px; 
+            padding-top: 30px; 
+            display: table; 
+            width: 100%;
+            border-top: 2px solid #e2e8f0;
+        }
+        
+        .sig-block { 
+            display: table-cell; 
+            width: 40%; 
+            vertical-align: bottom; 
+            text-align: center; 
+        }
+        
+        .sig-line { 
+            border-top: 2px solid #334155; 
+            width: 85%; 
+            margin: 0 auto 8px auto; 
+        }
+        
+        .sig-label { 
+            font-size: 11px; 
+            color: #64748b; 
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .footer-gap { 
+            display: table-cell; 
+            width: 20%; 
+        }
+        
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .wrapper {
+                box-shadow: none;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="header">
+            <div class="logo-cell">
+                <img src="${schoolLogo}" class="logo-img" alt="Logo" />
+            </div>
+            <div class="header-content">
+                <h1 class="school-name">PADMAVATI SEMI-ENGLISH SCHOOL</h1>
+                <p class="school-address">Baliraja Market Main Road, Loha, Maharashtra 431708, India<br>Phone: 7721879878</p>
+            </div>
+        </div>
+
+        <div class="form-title-box">
+            <span class="form-title">Student Admission Form</span>
+        </div>
+
+        <!-- Academic Details & Photo -->
+        <div class="section">
+            <div class="top-layout">
+                <div class="basic-info">
+                    <div class="section-header">📚 Academic Information</div>
+                    <table class="info-table">
+                        <tr>
+                            <td class="label-cell">Student Name</td>
+                            <td class="value-cell" style="font-weight: 700; color: #667eea;">${student.student_name || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Student ID</td>
+                            <td class="value-cell">${student.id || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Class / Grade</td>
+                            <td class="value-cell">${student.className || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Academic Session</td>
+                            <td class="value-cell">${student.academicSession || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Admission Date</td>
+                            <td class="value-cell">${student.admissionDate ? new Date(student.admissionDate).toLocaleDateString() : '-'}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="photo-container">
+                    <img src="${studentPhoto}" class="photo-box" alt="Student Photo" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Personal Information -->
+        <div class="section">
+            <div class="section-header">👤 Personal Details</div>
+            <div class="col-2-grid">
+                <div class="grid-col">
+                    <table class="info-table">
+                        <tr>
+                            <td class="label-cell">Gender</td>
+                            <td class="value-cell">${student.gender || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Date of Birth</td>
+                            <td class="value-cell">${student.dob ? new Date(student.dob).toLocaleDateString() : '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Nationality</td>
+                            <td class="value-cell">${student.nationalityName || '-'}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="grid-gap"></div>
+                <div class="grid-col">
+                    <table class="info-table">
+                        <tr>
+                            <td class="label-cell">Religion</td>
+                            <td class="value-cell">${student.religionName || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Caste Category</td>
+                            <td class="value-cell">${student.casteCategory || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Mother Tongue</td>
+                            <td class="value-cell">${student.motherTongue || '-'}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Family Details -->
+        <div class="section">
+            <div class="section-header">👨‍👩‍👧 Family Information</div>
+            <div class="col-2-grid">
+                <div class="grid-col">
+                    <table class="info-table">
+                        <tr>
+                            <td class="label-cell">Father's Name</td>
+                            <td class="value-cell">${student.father_name || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Occupation</td>
+                            <td class="value-cell">${student.fatherOccupation || '-'}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="grid-gap"></div>
+                <div class="grid-col">
+                    <table class="info-table">
+                        <tr>
+                            <td class="label-cell">Mother's Name</td>
+                            <td class="value-cell">${student.mother_name || '-'}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Occupation</td>
+                            <td class="value-cell">${student.motherOccupation || '-'}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contact Details -->
+        <div class="section">
+            <div class="section-header">📞 Contact Information</div>
+            <table class="info-table">
+                <tr>
+                    <td class="label-cell" style="width: 15%;">Mobile No.</td>
+                    <td class="value-cell" style="width: 35%;">${student.mobile1 || '-'} ${student.mobile2 ? ' / ' + student.mobile2 : ''}</td>
+                    <td class="label-cell" style="width: 15%; padding-left: 20px;">State</td>
+                    <td class="value-cell" style="width: 35%;">${student.stateName || '-'}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Address</td>
+                    <td class="value-cell" colspan="3">${student.address || '-'}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- School Kit -->
+        <div class="section">
+            <div class="section-header">🎒 School Kit Provided</div>
+            <div class="kit-grid">
+                ${student.kitItems && student.kitItems.length > 0 ? student.kitItems.map(item => `
+                    <div class="kit-item">
+                        <span class="check-mark">✓</span> ${typeof item === 'string' ? item : (item.name || item.item_name || "Kit Item")}
+                    </div>
+                `).join('') : '<div class="no-kit">No kit items recorded for this student.</div>'}
+            </div>
+        </div>
+
+        <!-- Footer / Signatures -->
+        <div class="footer">
+            <div class="sig-block">
+                <div class="sig-line"></div>
+                <div class="sig-label">Parent / Guardian Signature</div>
+            </div>
+            <div class="footer-gap"></div>
+            <div class="sig-block">
+                <div class="sig-line"></div>
+                <div class="sig-label">Principal Signature</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+`;
+
+            const { uri } = await Print.printToFileAsync({ html: htmlContent });
+
+            // Rename file to Student Name
+            const fileName = `${student.student_name ? student.student_name.replace(/[^a-zA-Z0-9]/g, '_') : 'Student'}_Admission_Form.pdf`;
+            const newUri = `${FileSystem.documentDirectory}${fileName}`;
+
+            await FileSystem.moveAsync({
+                from: uri,
+                to: newUri
+            });
+
+            if (Platform.OS === "ios") {
+                await Sharing.shareAsync(newUri);
+            } else {
+                await Sharing.shareAsync(newUri, {
+                    dialogTitle: 'Share Admission Form',
+                    mimeType: 'application/pdf',
+                    UTI: 'com.adobe.pdf'
+                });
+            }
+        } catch (error) {
+            console.error("PDF Generation Error:", error);
+            Alert.alert("Error", `Failed to generate PDF: ${error.message}`);
+        } finally {
+            setIsPrinting(false);
+        }
+    };
+
+    useLayoutEffect(() => {
+        // Try setting options on the parent navigator (Stack Navigator)
+        navigation.getParent()?.setOptions({
+            title: "Student Details",
+            headerStyle: { backgroundColor: '#5E72EB' },
+            headerTintColor: '#fff',
+
+        });
+
+        // Also set on the current navigator just in case
+        navigation.setOptions({
+            title: "Student Details",
+            headerStyle: { backgroundColor: '#5E72EB' },
+            headerTintColor: '#fff',
+            headerRight: () => (
+                <TouchableOpacity onPress={generatePDF} style={{ marginRight: 15 }} disabled={isPrinting}>
+                    {isPrinting ? (
+                        <ActivityIndicator size="small" color="white" />
+                    ) : (
+                        <MaterialCommunityIcons name="printer" size={24} color="white" />
+                    )}
+                </TouchableOpacity>
+            ),
+        });
+    }, [navigation, student]);
+
+    // debuggger;
 
     useEffect(() => {
         if (studentId) {
@@ -41,21 +577,21 @@ const StudentDetails = ({ route, navigation }) => {
 
     const fetchStudentDetails = async () => {
         try {
-            const response = await axios.get(`${backendUrl}student/${studentId}`);
+            const { data } = await axios.get(
+                `${backendUrl}student/${studentId}`
+            );
 
-            if (response.data && response.data.status === 'success') {
-                setStudent(response.data.data);
-            } else if (response.data && response.data.data) {
-                setStudent(response.data.data);
-            } else {
-                setStudent(response.data);
-            }
+            // Prefer data.data when available, else fallback
+            const studentData = data?.data ?? data;
+            // debugger;
+            setStudent(studentData);
         } catch (error) {
             console.error("Error fetching student details:", error);
         } finally {
             setLoading(false);
         }
     };
+
 
     const DetailItem = ({ icon, label, value, isFullWidth = false }) => (
         <View style={[styles.detailItem, isFullWidth ? styles.fullWidthItem : styles.halfWidthItem]}>
@@ -129,7 +665,38 @@ const StudentDetails = ({ route, navigation }) => {
                                 <MaterialCommunityIcons name="calendar" size={10} color="#5E72EB" />
                                 <Text style={styles.sessionBadgeText}>{student.academicSession}</Text>
                             </View>
+                            <TouchableOpacity
+                                onPress={generatePDF}
+                                disabled={isPrinting}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    backgroundColor: '#FF9F1C',
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 6,
+                                    borderRadius: 20,
+                                    elevation: 3,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.22,
+                                    shadowRadius: 2.22,
+                                    opacity: isPrinting ? 0.7 : 1,
+                                }}
+                            >
+                                {isPrinting ? (
+                                    <ActivityIndicator size="small" color="white" style={{ marginRight: 6 }} />
+                                ) : (
+                                    <MaterialCommunityIcons name="printer-outline" size={16} color="white" />
+                                )}
+                                <Text style={{ color: 'white', marginLeft: isPrinting ? 0 : 6, fontWeight: '700', fontSize: 12 }}>
+                                    {isPrinting ? 'Printing...' : 'Print PDF'}
+                                </Text>
+                            </TouchableOpacity>
+
+
                         </View>
+
+
                     </View>
                 </View>
             </LinearGradient>
@@ -239,6 +806,42 @@ const StudentDetails = ({ route, navigation }) => {
                         <DetailItem icon="home" label="Address" value={student.address} isFullWidth />
                     </View>
                 </View>
+
+                {/* Documents */}
+                {(student.aadhar_copy || student.birth_certificate) && (
+                    <View style={styles.card}>
+                        <View style={styles.cardHeader}>
+                            <View style={styles.cardHeaderLeft}>
+                                <View style={styles.cardIconContainer}>
+                                    <MaterialCommunityIcons name="file-document-outline" size={16} color="#5E72EB" />
+                                </View>
+                                <Text style={styles.cardTitle}>Documents</Text>
+                            </View>
+                        </View>
+                        <View style={styles.cardContent}>
+                            {student.aadhar_copy && (
+                                <TouchableOpacity
+                                    style={styles.documentButton}
+                                    onPress={() => Linking.openURL(`${userImageBaseUrl}${student.aadhar_copy}`)}
+                                >
+                                    <MaterialCommunityIcons name="card-account-details-outline" size={24} color="#E11D48" />
+                                    <Text style={styles.documentText}>Aadhar Copy</Text>
+                                    <MaterialCommunityIcons name="download" size={20} color="#64748B" />
+                                </TouchableOpacity>
+                            )}
+                            {student.birth_certificate && (
+                                <TouchableOpacity
+                                    style={styles.documentButton}
+                                    onPress={() => Linking.openURL(`${userImageBaseUrl}${student.birth_certificate}`)}
+                                >
+                                    <MaterialCommunityIcons name="certificate-outline" size={24} color="#059669" />
+                                    <Text style={styles.documentText}>Birth Certificate</Text>
+                                    <MaterialCommunityIcons name="download" size={20} color="#64748B" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
+                )}
 
                 {/* School Kit Details */}
                 {student.kitItems && student.kitItems.length > 0 && (
@@ -568,6 +1171,24 @@ const styles = StyleSheet.create({
         color: '#4B5563',
         fontWeight: '600',
         marginLeft: 4,
+    },
+    documentButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        marginTop: 8,
+        width: '100%',
+    },
+    documentText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#334155',
+        fontWeight: '500',
+        marginLeft: 12,
     },
 });
 

@@ -105,7 +105,7 @@ const StudentAdmissionForm = ({ navigation, route }) => {
     motherTongue: "Marathi",
     state: "Maharashtra",
     caste: "",
-    fatherOccupation: "Former",
+    fatherOccupation: "farmer",
     motherOccupation: "Housewife",
     aadharNo: "",
     birthCertificateUri: null,
@@ -375,8 +375,8 @@ const StudentAdmissionForm = ({ navigation, route }) => {
         text: "Camera",
         onPress: async () => {
           let result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: field === "photoUri" ? [3, 4] : [16, 9],
+            allowsEditing: field === "photoUri",
+            aspect: field === "photoUri" ? [3, 4] : undefined,
             quality: 0.7,
           });
           if (!result.canceled) {
@@ -389,8 +389,8 @@ const StudentAdmissionForm = ({ navigation, route }) => {
         onPress: async () => {
           let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: field === "photoUri" ? [3, 4] : [16, 9],
+            allowsEditing: field === "photoUri",
+            aspect: field === "photoUri" ? [3, 4] : undefined,
             quality: 0.7,
           });
           if (!result.canceled) {

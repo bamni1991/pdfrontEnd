@@ -6,11 +6,17 @@ import { createDrawerNavigator } from "@react-navigation/drawer";
 // src/screens/admin/AdminDashBoard.js
 // C:\xampp\htdocs\padmavati\src\navigation\AdminNavigator.js
 import AdminNavigator from "../navigation/AdminNavigator";
-// import TeacherDashboard from "./TeacherDashboard";
-// import ParentDashboard from "./ParentDashboard";
+import TeacherNavigator from "../navigation/TeacherNavigator";
+import ParentNavigator from "../navigation/ParentNavigator";
+
+import { useAuth } from "../context/AuthContext";
 
 const DrawerNavigator = () => {
   const Drawer = createDrawerNavigator();
+  const { role_name } = useAuth();
+  // debugger;
+  // Normalize role name for comparison (handle potential casing issues)
+  const role = role_name ? role_name.toLowerCase() : "";
 
   return (
     <Drawer.Navigator
@@ -60,14 +66,41 @@ const DrawerNavigator = () => {
         },
       }}
     >
-      <Drawer.Screen
-        name="AdminNavigator"
-        component={AdminNavigator}
-        options={{
-          title: "Home",
-          drawerLabel: "Dashboard",
-        }}
-      />
+      {/* Admin Role */}
+      {(role === "admin" || !role) && (
+        <Drawer.Screen
+          name="AdminNavigator"
+          component={AdminNavigator}
+          options={{
+            title: "Admin Dashboard",
+            drawerLabel: "Dashboard",
+          }}
+        />
+      )}
+
+      {/* Teacher Role */}
+      {role === "teacher" && (
+        <Drawer.Screen
+          name="TeacherNavigator"
+          component={TeacherNavigator}
+          options={{
+            title: "Teacher Dashboard",
+            drawerLabel: "Dashboard",
+          }}
+        />
+      )}
+
+      {/* Parent/Student Role */}
+      {(role === "parent" || role === "student") && (
+        <Drawer.Screen
+          name="ParentNavigator"
+          component={ParentNavigator}
+          options={{
+            title: "Student Dashboard",
+            drawerLabel: "Dashboard",
+          }}
+        />
+      )}
     </Drawer.Navigator>
   );
 };
